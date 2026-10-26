@@ -16,9 +16,9 @@ Mobile-first answer to “What’s available for me to work?” Workers search p
 
 Geocoding is not called. PostGIS is not installed. Distance is a latitude/longitude bounding box plus haversine miles (`app.miles_between`) on **public approximate coordinates**.
 
-`jobs.approx_lat` / `approx_lng` are rounded to 0.01 degrees (about a kilometer). A trigger fills them from `public.place_centroids` when the employer does not enter an approximate point. Postal code wins over city. The private site pin is never copied into the public point. The centroid table is reference data seeded in `0005_job_marketplace.sql` (California city centers and a smaller ZIP set). An unknown city has no radius until a centroid or an employer-entered approximate point exists.
+`jobs.approx_lat` / `approx_lng` are rounded to 0.01 degrees (about a kilometer). A trigger fills them from `public.place_centroids` when the employer does not enter an approximate point. Postal code wins over city. The private site pin is never copied into the public point. The centroid table is reference data seeded in `20261026120000_job_marketplace.sql` (California city centers and a smaller ZIP set). An unknown city has no radius until a centroid or an employer-entered approximate point exists.
 
-`site_address_private`, `site_lat`, and `site_lng` are not selectable by `anon` or `authenticated`. `public.job_private_site` returns them only to an organization member, staff, or a worker with an assignment in `pending_confirmation`, `confirmed`, `in_progress`, `completed`, or `disputed`. Accepting an offer creates that assignment, which is what reveals the address. There is no Phase 3 document in this repo; this follows the Phase 0 note on `jobs.site_address_private`.
+`jobs.site_address_private`, `site_lat`, and `site_lng` are not selectable by `anon` or `authenticated`. The street is stored in `job_private_locations`. `public.job_private_site` returns that street, with null coordinates, only to an organization member, staff, or a worker with an assignment in `pending_confirmation`, `confirmed`, `in_progress`, `completed`, or `disputed`. Accepting an offer creates that assignment, which is what the public page uses to reveal the address. Phase 3’s table policy is wider and is described in `docs/PHASE3.md`.
 
 ## Eligibility
 
@@ -45,13 +45,13 @@ Statuses: `submitted`, `reviewing`, `shortlisted`, `interview`, `offered`, `acce
 - Job status does **not** flip to `filled` or `expired` by itself. Apply and accept still refuse those conditions.
 - `accept_offer` is the only insert path for `assignments`. It sets the application to `accepted` and inserts one `confirmed` assignment with both confirmation timestamps (the offer is the employer confirmation; accept is the worker confirmation). The write is audited as `application.accept` and `assignment.create`. Audits do not store the private address, the note, or credential numbers.
 
-Publishing uses `publish_job`. A verified organization becomes `published`. Any other verification status becomes `pending_review` and stays off the public list. Publish requires minimum pay, a public approximate point, a city or ZIP, and a start time for `single_shift`, `multi_day`, and `recurring`. Editing a published shift is rejected (`job is locked`).
+The employer screen publishes with Phase 3 `public.transition_job`. A verified organization becomes `published`. Any other verification status becomes `pending_review` and stays off the public list. `public.publish_job` still performs that same transition. Publish uses Phase 3’s completeness check (title, a description of at least 20 characters, a public city, pay, headcount, and a start and end for a single shift). `save_job_draft` still refuses edits once a shift has left draft or pending review (`job is locked`). The employer form updates job columns directly under `app.guard_job_write`.
 
 Pay copy states that the named organization sets the wage and employs the worker. The marketplace does not. There is no criminal-history field.
 
 ## Search performance
 
-Indexes added in `0005_job_marketplace.sql`: `jobs_published_sort_idx`, `jobs_published_approx_idx`, `jobs_published_city_idx`, `jobs_published_county_idx`, `jobs_published_shift_idx`. The Phase 0 index on private `site_lat` / `site_lng` is unchanged and is not the public search key.
+Indexes added in `20261026120000_job_marketplace.sql`: `jobs_published_sort_idx`, `jobs_published_approx_idx`, `jobs_published_city_idx`, `jobs_published_county_idx`, `jobs_published_shift_idx`. The Phase 0 index on private `site_lat` / `site_lng` is unchanged and is not the public search key.
 
 `EXPLAIN` against about 2,000 rolled-back published rows (then `ROLLBACK`, so they are not left in the database):
 
@@ -65,13 +65,13 @@ The plan is in the test run’s `search-explain.txt` artifact. The 2,000 rows we
 
 | Check | Result |
 |---|---|
-| `npx supabase db reset --yes` | migrations `0000`–`0005` and `supabase/seed.sql` applied |
+| `npx supabase db reset --yes` | `0000`–`0004`, `20261026065707_employer_portal.sql`, `20261026072821_column_privileges.sql`, `20261026120000_job_marketplace.sql`, and `supabase/seed.sql` applied |
 | `npm run lint` | pass |
 | `npm run typecheck` | pass |
 | `npm run build` | pass |
-| `npm test` | 52 passed |
+| `npm test` | 57 passed |
 | `npm run test:rls` | 87 passed (Phase 1: 48, Phase 2: 17, Phase 3: 14, Phase 4: 8). None skipped. |
-| `npm run test:e2e` | 7 passed, viewport 390×844, including search → detail (no street address) → blocked apply → verified credential → apply → employer shortlist → offer → worker accept (address visible) → signed-out visitor still sees no street address |
+| `npm run test:e2e` | 8 passed, viewport 390×844, including the Phase 3 employer portal and search → detail (no street address) → blocked apply → verified credential → apply → employer shortlist → offer → worker accept (address visible) → signed-out visitor still sees no street address |
 
 `supabase/seed.sql` is still a no-op. Place centroids are reference rows in the migration, not fake users or jobs.
 
@@ -91,7 +91,7 @@ Phase 3 migrations `20261026065707_employer_portal.sql` and `20261026072821_colu
 - Public coordinates are shared by every site that rounds into the same 0.01-degree cell.
 - A withdrawn or rejected application cannot be submitted again for that shift.
 - Shift rows do not automatically become `filled` or `expired`; apply and accept enforce those blocks.
-- Organization verification has no staff screen. A new organization stays `unverified`, and publish keeps its shifts in `pending_review`, until `verification_status` is set by a trusted database role.
+- An unverified organization still cannot put a shift on the public list. Publish stores `pending_review` until staff verify the organization at `/admin/organizations` and an org member publishes again.
 - Authenticated members can still read sensitive organization columns (`stripe_customer_id`, license, contact). Anon is limited to public columns. That authenticated grant is unchanged from earlier phases.
 - `search_jobs` does not inline, so `EXPLAIN` of the function call does not show the inner index plan.
 - No email, SMS, payments, or background checks.
@@ -99,7 +99,6 @@ Phase 3 migrations `20261026065707_employer_portal.sql` and `20261026072821_colu
 
 ## Recommended next actions
 
-- Staff UI to verify an organization, which is what lets a shift become public.
 - More California ZIP centroids, or a geocoder that writes only the rounded public point.
 - Notify workers in the product UI (the in-app rows already exist) and, later, real delivery.
 - Assignment lifecycle after `confirmed`: check-in, completion, and disputes.
