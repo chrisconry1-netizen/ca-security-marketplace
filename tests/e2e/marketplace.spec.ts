@@ -146,7 +146,8 @@ test("worker finds a shift, applies, and accepts an offer on a phone", async ({ 
     await page.goto(jobUrl.replace("/jobs/", "/employer/jobs/"));
     await expect(page.getByText(note)).toBeVisible();
     await expect(page.getByText("BSIS-999111")).toHaveCount(0);
-    await expect(page.getByText("CA Guard Registration (BSIS)")).toBeVisible();
+    await expect(page.getByText("CA Guard Registration (BSIS)", { exact: true })).toBeVisible();
+    await expect(page.getByText(/CA Guard Registration \(BSIS\) · Through /)).toBeVisible();
     await page.getByRole("button", { name: "Shortlist" }).click();
     await expect(page.getByText("Shortlisted")).toBeVisible();
     await page.getByRole("button", { name: "Offer" }).click();
