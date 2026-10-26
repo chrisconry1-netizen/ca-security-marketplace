@@ -5,6 +5,7 @@ import { WEEKDAYS } from "@/lib/workers/categories";
 import { PROFILE_MESSAGES } from "@/lib/workers/messages";
 import { clock, weekdayName } from "@/lib/workers/present";
 import { formatPacific } from "@/lib/workers/time";
+import { workerNav } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/server";
 import { requireArea } from "@/server/auth/guards";
 import { addDateException, addWeeklyWindow, removeAvailability } from "./actions";
@@ -18,7 +19,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams:
   const exceptions = (rows ?? []).filter((row) => row.starts_at);
 
   return (
-    <AppShell ctx={ctx} title="Worker" nav={[{ href: "/worker/profile", label: "Profile", ready: true }, { href: "/worker/availability", label: "Availability", ready: true }, { href: "/worker/credentials", label: "Credentials", ready: true }]}>
+    <AppShell ctx={ctx} title="Worker" nav={workerNav}>
       <Notice code={sp.notice} tone="info" messages={PROFILE_MESSAGES} />
       <Notice code={sp.error} messages={PROFILE_MESSAGES} />
       <h1 className="mt-2 text-2xl font-bold text-slate-900">Availability</h1>

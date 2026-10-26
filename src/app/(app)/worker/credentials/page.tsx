@@ -6,6 +6,7 @@ import { credentialTimeState } from "@/lib/workers/expiry";
 import { PROFILE_MESSAGES } from "@/lib/workers/messages";
 import { relationName } from "@/lib/workers/present";
 import { maskCredentialNumber } from "@/lib/workers/validation";
+import { workerNav } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/server";
 import { requireArea } from "@/server/auth/guards";
 
@@ -19,7 +20,7 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
     .order("created_at", { ascending: false });
 
   return (
-    <AppShell ctx={ctx} title="Worker" nav={[{ href: "/worker/profile", label: "Profile", ready: true }, { href: "/worker/credentials", label: "Credentials", ready: true }, { href: "/worker/availability", label: "Availability", ready: true }]}>
+    <AppShell ctx={ctx} title="Worker" nav={workerNav}>
       <Notice code={sp.notice} tone="info" messages={PROFILE_MESSAGES} />
       <Notice code={sp.error} messages={PROFILE_MESSAGES} />
       <div className="mt-2 flex items-start justify-between gap-3">

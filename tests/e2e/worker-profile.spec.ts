@@ -63,7 +63,7 @@ test("worker builds a profile and credential; a moderator verifies it", async ({
   await expect(page.getByText("Concerts and retail floors.")).toBeVisible();
   await expect(page.getByText("Prior patrol assignment. Not a current authorization.")).toBeVisible();
   await expect(page.getByText("does not authorize off-duty work")).toBeVisible();
-  await expect(page.getByRole("img")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Profile photo" })).toBeVisible();
 
   await page.goto("/worker/availability");
   await page.getByRole("button", { name: "Add weekly window" }).click();
