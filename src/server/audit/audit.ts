@@ -17,7 +17,7 @@ export interface AuditEvent {
   after?: unknown;
 }
 
-async function requestMeta() {
+export async function requestMeta() {
   const h = await headers();
   return {
     user_agent: h.get("user-agent")?.slice(0, 512) ?? null,

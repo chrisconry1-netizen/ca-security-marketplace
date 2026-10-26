@@ -1,0 +1,21 @@
+/** Fixed catalogue. Query-string codes never render user-controlled text. */
+export const PROFILE_MESSAGES: Record<string, string> = {
+  invalid_input: "Check the form and try again.",
+  address_not_allowed: "Enter a city, county, or ZIP. Do not enter a street address.",
+  saved: "Profile saved.",
+  upload_failed: "That photo could not be saved. Use a JPG, PNG, or WebP under 2 MB.",
+  credential_saved: "Credential saved. It is not verified until a moderator reviews it.",
+  credential_submitted: "Submitted for review. A person reviews it. Nothing is verified automatically.",
+  document_required: "This credential needs a document before it can be submitted.",
+  document_invalid: "Upload a PDF, JPG, PNG, or HEIC under 10 MB.",
+  not_submittable: "This credential cannot be submitted.",
+  credential_locked: "This credential is locked while it is in review or after a decision.",
+  availability_saved: "Availability saved.",
+  availability_invalid: "Check the day and times. An exception has to end after it starts.",
+  availability_limit: "You can save up to 64 availability rows.",
+  removed: "Removed.",
+  reviewed: "Review recorded.",
+  review_failed: "Could not record that review. Verified decisions need a source reference. Rejections need a note.",
+  not_found: "That record was not found.",
+  generic: "Something went wrong. Please try again.",
+};
