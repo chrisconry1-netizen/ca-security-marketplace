@@ -1,8 +1,10 @@
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const MESSAGE_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 
 export type AvatarMime = "image/jpeg" | "image/png" | "image/webp";
 export type DocumentMime = "application/pdf" | "image/jpeg" | "image/png" | "image/heic";
+export type MessageAttachmentMime = "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
 
 const AVATAR_EXT: Record<AvatarMime, string> = {
   "image/jpeg": "jpg",
@@ -54,4 +56,14 @@ export function sniffAvatar(bytes: Uint8Array): { mime: AvatarMime; ext: string 
 export function sniffDocument(bytes: Uint8Array): { mime: DocumentMime; ext: string } | null {
   if (bytes.byteLength === 0 || bytes.byteLength > DOCUMENT_MAX_BYTES) return null;
   return detectDocument(bytes);
+}
+
+/** Message files match the private message-attachments bucket. HEIC is not allowed. */
+export function sniffMessageAttachment(bytes: Uint8Array): { mime: MessageAttachmentMime; ext: string } | null {
+  if (bytes.byteLength === 0 || bytes.byteLength > MESSAGE_ATTACHMENT_MAX_BYTES) return null;
+  const avatar = detectAvatar(bytes);
+  if (avatar) return avatar;
+  const document = detectDocument(bytes);
+  if (document?.mime === "application/pdf") return { mime: "application/pdf", ext: "pdf" };
+  return null;
 }

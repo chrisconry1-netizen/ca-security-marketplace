@@ -12,7 +12,7 @@
     "test:rls": "vitest run --config vitest.rls.config.mts",
     "test:e2e": "playwright test",
     "db:start": "supabase start -x studio,imgproxy,vector,logflare,supavisor,edge-runtime,postgres-meta",
-    "db:reset": "supabase db reset"
+    "db:reset": "supabase db reset --yes && bash scripts/apply-realtime-policies.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

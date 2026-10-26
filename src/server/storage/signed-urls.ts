@@ -1,5 +1,6 @@
 import "server-only";
 import { STAFF_ROLES } from "@/lib/auth/roles";
+import { ATTACHMENT_URL_TTL_SECONDS } from "@/lib/messaging/limits";
 import { createClient } from "@/lib/supabase/server";
 import { audit } from "@/server/audit/audit";
 import { requireRole } from "@/server/auth/guards";
@@ -19,6 +20,15 @@ export async function signOrgLogo(path: string | null | undefined, organizationI
   if (!path?.startsWith(`${organizationId}/`)) return null;
   const supabase = await createClient();
   const { data, error } = await supabase.storage.from("org-logos").createSignedUrl(path, AVATAR_TTL_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
+/** Signed with the user client so storage RLS, not service_role, decides access. */
+export async function signMessageAttachment(path: string | null | undefined, conversationId: string): Promise<string | null> {
+  if (!path?.startsWith(`${conversationId}/`)) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("message-attachments").createSignedUrl(path, ATTACHMENT_URL_TTL_SECONDS);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
 }

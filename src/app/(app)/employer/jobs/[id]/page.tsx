@@ -14,6 +14,8 @@ import { categoryLabel } from "@/lib/workers/categories";
 import { relationName } from "@/lib/workers/present";
 import { createClient } from "@/lib/supabase/server";
 import { requireArea } from "@/server/auth/guards";
+import { openConversation } from "@/app/(app)/messages/actions";
+import { MESSAGING_MESSAGES } from "@/lib/messaging/messages";
 import { setApplicationStatus, transitionJobStatus } from "../actions";
 
 function credentialCards(value: unknown): { code: string; name: string; expires_on: string | null }[] {
@@ -76,8 +78,8 @@ export default async function JobPage({ params, searchParams }: { params: Promis
 
   return (
     <AppShell ctx={ctx} title="Employer" nav={employerNav}>
-      <Notice code={queryValue(sp.notice)} tone="info" messages={EMPLOYER_MESSAGES} />
-      <Notice code={queryValue(sp.error)} messages={EMPLOYER_MESSAGES} />
+      <Notice code={queryValue(sp.notice)} tone="info" messages={{ ...EMPLOYER_MESSAGES, ...MESSAGING_MESSAGES }} />
+      <Notice code={queryValue(sp.error)} messages={{ ...EMPLOYER_MESSAGES, ...MESSAGING_MESSAGES }} />
       {!job && <h1 className="mt-2 text-2xl font-bold text-slate-900">Job unavailable</h1>}
       {job && (
         <>
@@ -165,6 +167,13 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                           ))}
                         </ul>
                       )}
+                      <form action={openConversation} className="mt-3">
+                        <input type="hidden" name="applicationId" value={applicant.application_id} />
+                        <input type="hidden" name="returnTo" value={`/employer/jobs/${job.id}`} />
+                        <button type="submit" className="min-h-11 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900">
+                          Message
+                        </button>
+                      </form>
                       {employerTargets(applicant.status).length > 0 && (
                         <form action={setApplicationStatus} className="mt-3 flex flex-wrap gap-2">
                           <input type="hidden" name="applicationId" value={applicant.application_id} />
