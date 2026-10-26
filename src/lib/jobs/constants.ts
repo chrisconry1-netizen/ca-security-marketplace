@@ -110,7 +110,7 @@ export const EMPLOYER_ACTION_LABELS: Record<string, string> = {
 export const PAGE_SIZE = 20;
 
 export const PUBLIC_JOB_COLUMNS =
-  "id, organization_id, title, description, job_type, category, is_armed, status, urgency, city, county, postal_code, approx_lat, approx_lng, shift_period, starts_at, ends_at, pay_type, pay_min_cents, pay_max_cents, workers_needed, min_years_experience, uniform_notes, vehicle_required, equipment_notes, application_deadline, published_at";
+  "id, organization_id, title, description, job_type, category, is_armed, status, urgency, city, county, postal_code, approx_lat, approx_lng, shift_period, starts_at, ends_at, pay_type, pay_min_cents, pay_max_cents, workers_needed, min_years_experience, uniform_notes, vehicle_required, equipment_notes, application_deadline, published_at, requires_off_duty_le";
 
 export const PAY_DISCLAIMER = "Pay is entered by the employing organization. This marketplace does not set the wage or employ the worker.";
 export const HIRING_DISCLAIMER = "The organization named on this shift is the employer. Accepting an offer records that you and they agreed to the assignment. It does not make you an employee of this marketplace.";

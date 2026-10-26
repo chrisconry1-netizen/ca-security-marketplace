@@ -25,6 +25,7 @@ export interface JobFormDefaults {
   minYears?: string;
   uniformNotes?: string;
   vehicleRequired?: boolean;
+  offDutyLe?: boolean;
   equipmentNotes?: string;
   deadlineDate?: string;
   deadlineTime?: string;
@@ -205,6 +206,10 @@ export function JobForm({
         <label className="flex items-center gap-3 text-sm font-medium text-slate-800">
           <input name="vehicleRequired" value="yes" type="checkbox" defaultChecked={defaults.vehicleRequired ?? false} className="h-5 w-5" />
           Vehicle required
+        </label>
+        <label className="flex items-start gap-3 text-sm font-medium text-slate-800">
+          <input name="offDutyLe" value="yes" type="checkbox" defaultChecked={defaults.offDutyLe ?? false} className="mt-0.5 h-5 w-5" />
+          <span>This post requires a recorded off-duty law-enforcement approval. Suggestions use that flag. It is not a determination that anyone may work the post.</span>
         </label>
         <label className="block text-sm font-medium text-slate-800">
           Equipment

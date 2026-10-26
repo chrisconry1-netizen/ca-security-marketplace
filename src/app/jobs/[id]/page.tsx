@@ -95,6 +95,7 @@ export default async function JobDetailPage({
           {categoryLabel(job.category)} · {job.is_armed ? "Armed" : "Unarmed"} · {jobTypeLabel(job.job_type)}
           {job.workers_needed > 1 ? ` · ${job.workers_needed} workers` : ""}
           {job.vehicle_required ? " · Vehicle required" : ""}
+          {job.requires_off_duty_le ? " · Recorded off-duty approval required" : ""}
           {job.min_years_experience != null ? ` · ${job.min_years_experience}+ years` : ""}
         </p>
         <p className="text-sm text-slate-800">

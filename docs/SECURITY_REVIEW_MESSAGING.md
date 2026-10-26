@@ -39,6 +39,8 @@ Reporting a message or a conversation requires membership. The report is inserte
 
 `realtime.messages` is owned by `supabase_realtime_admin`. The migration role is not that owner and is not a superuser, so the migration cannot create policies there. `supabase/realtime_authorization.sql` is applied by `scripts/apply-realtime-policies.sh` as `supabase_admin`. `npm run db:reset` runs both. A bare `supabase db reset` leaves private channels unauthorized (fail closed: subscribe and broadcast do not succeed).
 
+The apply script does not enable RLS on `realtime.messages`. Hosted Supabase already has it, and `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` fails with `42501` when the runner is not the owner. Local databases already have that RLS on, so creating the policies is enough.
+
 Policies key off `realtime.topic()` and `extension`. They do not require `private = true`, because `realtime.authorize` probes omit that column and it defaults to false.
 
 ## What is still weak

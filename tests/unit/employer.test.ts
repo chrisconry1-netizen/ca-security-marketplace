@@ -26,6 +26,7 @@ const readyJob: JobWrite = {
   min_years_experience: null,
   uniform_notes: null,
   vehicle_required: false,
+  requires_off_duty_le: false,
   equipment_notes: null,
   application_deadline: null,
   site_address: null,

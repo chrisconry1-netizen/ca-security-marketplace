@@ -104,6 +104,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             {job.min_years_experience != null && <p>Minimum experience: {job.min_years_experience} years</p>}
             {job.uniform_notes && <p>Uniform: {job.uniform_notes}</p>}
             {job.vehicle_required && <p>Vehicle required</p>}
+            {job.requires_off_duty_le && <p>Suggestions for this post require a recorded off-duty approval.</p>}
             {job.equipment_notes && <p>Equipment: {job.equipment_notes}</p>}
             <p>Deadline: {formatPacific(job.application_deadline)}</p>
             {(requirements ?? []).length > 0 && (
@@ -118,6 +119,11 @@ export default async function JobPage({ params, searchParams }: { params: Promis
           <div className="mt-4 flex flex-col gap-2">
             {editable && (
               <Link href={`/employer/jobs/${job.id}/edit`} className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900">Edit job</Link>
+            )}
+            {membership && status === "published" && (
+              <Link href={`/employer/jobs/${job.id}/suggestions`} className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900">
+                Suggested workers
+              </Link>
             )}
             {membership && allowedTargets(status, verified).map((target) => (
               <form key={target} action={transitionJobStatus}>

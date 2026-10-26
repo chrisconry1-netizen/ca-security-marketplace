@@ -64,6 +64,7 @@ export default async function EditJobPage({ params, searchParams }: { params: Pr
           minYears: job.min_years_experience == null ? "" : String(job.min_years_experience),
           uniformNotes: job.uniform_notes ?? "",
           vehicleRequired: job.vehicle_required,
+          offDutyLe: job.requires_off_duty_le,
           equipmentNotes: job.equipment_notes ?? "",
           deadlineDate: deadline.date,
           deadlineTime: deadline.time,
