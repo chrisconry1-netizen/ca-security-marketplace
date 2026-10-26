@@ -17,6 +17,11 @@ export default function Landing() {
           <p className="mt-4 max-w-2xl text-lg text-slate-300">
             {PRODUCT_NAME} is where guards and the organizations that hire them find each other. GuardGig does not employ or dispatch workers, set wages, or check a license with BSIS.
           </p>
+          <p className="mt-6">
+            <Link href="/jobs" className="text-sm font-semibold text-white underline underline-offset-4">
+              Browse open shifts
+            </Link>
+          </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             <Link href="/register" className="rounded-2xl bg-white p-6 text-slate-900 hover:bg-slate-100">
               <span className="block text-xl font-bold">I need security work</span>

@@ -22,6 +22,7 @@ export const EMPLOYER_MESSAGES: Record<string, string> = {
   job_saved: "Job saved as a draft.",
   job_pending: "The organization is not verified, so this job is pending review instead of published.",
   job_published: "Job published.",
+  status_updated: "Application updated.",
   job_incomplete: "Add a public city, a pay rate, and the schedule this job type needs before publishing.",
   job_transition: "That status change is not available.",
   upload_failed: "That logo could not be saved. Use a JPG, PNG, or WebP under 2 MB.",

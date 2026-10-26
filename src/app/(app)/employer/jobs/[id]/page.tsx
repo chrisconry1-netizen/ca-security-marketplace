@@ -5,15 +5,34 @@ import { Notice } from "@/components/ui";
 import { EMPLOYER_MESSAGES } from "@/lib/employer/messages";
 import { employerNav } from "@/lib/employer/nav";
 import { queryValue } from "@/lib/form";
-import { jobTypeLabel } from "@/lib/jobs/constants";
-import { allowedTargets, JOB_STATUSES, jobStatusLabel, type JobStatus } from "@/lib/jobs/state";
+import { APPLICATION_LABELS, EMPLOYER_ACTION_LABELS, jobTypeLabel } from "@/lib/jobs/constants";
+import { expiryLabel, pacificDate } from "@/lib/jobs/present";
+import { allowedTargets, employerTargets, JOB_STATUSES, jobStatusLabel, type ApplicationStatus, type JobStatus } from "@/lib/jobs/state";
 import { formatPacific } from "@/lib/jobs/time";
 import { compensationLine, JOB_COLUMNS } from "@/lib/jobs/validation";
 import { categoryLabel } from "@/lib/workers/categories";
 import { relationName } from "@/lib/workers/present";
 import { createClient } from "@/lib/supabase/server";
 import { requireArea } from "@/server/auth/guards";
-import { transitionJobStatus } from "../actions";
+import { setApplicationStatus, transitionJobStatus } from "../actions";
+
+function credentialCards(value: unknown): { code: string; name: string; expires_on: string | null }[] {
+  let parsed = value;
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as { code?: unknown; name?: unknown; expires_on?: unknown };
+    if (typeof row.code !== "string" || typeof row.name !== "string") return [];
+    return [{ code: row.code, name: row.name, expires_on: typeof row.expires_on === "string" ? row.expires_on : null }];
+  });
+}
 
 function asStatus(value: string): JobStatus {
   return (JOB_STATUSES as readonly string[]).includes(value) ? (value as JobStatus) : "draft";
@@ -47,7 +66,11 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const { data: requirements } = job
     ? await supabase.from("job_requirements").select("id, credential_types(name)").eq("job_id", id)
     : { data: [] };
+  const { data: applicants, error: applicantError } = membership
+    ? await supabase.rpc("job_applicants", { p_job_id: id })
+    : { data: [], error: null };
   const status = asStatus(job?.status ?? "draft");
+  const shiftDate = pacificDate(job?.starts_at ?? null);
   const verified = org?.verification_status === "verified";
   const editable = membership && (status === "draft" || status === "pending_review");
 
@@ -102,6 +125,64 @@ export default async function JobPage({ params, searchParams }: { params: Promis
               </form>
             ))}
           </div>
+          {membership && (
+            <section className="mt-6">
+              <h2 className="text-lg font-bold text-slate-900">Applicants</h2>
+              <p className="mt-1 text-sm text-slate-600">Nothing here accepts or rejects an application on its own. Credential numbers are not shown.</p>
+              {applicantError && <p className="mt-2 text-sm text-red-800">Applicants could not be loaded.</p>}
+              <div className="mt-3 space-y-3">
+                {((applicants ?? []) as {
+                  application_id: string;
+                  status: ApplicationStatus;
+                  cover_note: string | null;
+                  display_name: string | null;
+                  city: string | null;
+                  county: string | null;
+                  years_experience: number | null;
+                  verified_credentials: unknown;
+                }[]).map((applicant) => {
+                  const credentials = credentialCards(applicant.verified_credentials);
+                  return (
+                    <article key={applicant.application_id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-semibold text-slate-900">{applicant.display_name || "Worker"}</h3>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{APPLICATION_LABELS[applicant.status] ?? applicant.status}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {[applicant.city, applicant.county].filter(Boolean).join(" · ") || "Area not listed"}
+                        {applicant.years_experience != null ? ` · ${applicant.years_experience} years` : ""}
+                      </p>
+                      {applicant.cover_note && <p className="mt-2 text-sm text-slate-800">{applicant.cover_note}</p>}
+                      <h4 className="mt-3 text-sm font-semibold text-slate-900">Verified credentials</h4>
+                      {credentials.length === 0 ? (
+                        <p className="mt-1 text-sm text-slate-600">No verified credentials on file.</p>
+                      ) : (
+                        <ul className="mt-1 space-y-1 text-sm text-slate-700">
+                          {credentials.map((credential) => (
+                            <li key={credential.code}>
+                              {credential.name} · {expiryLabel(credential.expires_on, shiftDate)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {employerTargets(applicant.status).length > 0 && (
+                        <form action={setApplicationStatus} className="mt-3 flex flex-wrap gap-2">
+                          <input type="hidden" name="applicationId" value={applicant.application_id} />
+                          <input type="hidden" name="returnTo" value={`/employer/jobs/${job.id}`} />
+                          {employerTargets(applicant.status).map((next) => (
+                            <button key={next} type="submit" name="status" value={next} className="min-h-11 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">
+                              {EMPLOYER_ACTION_LABELS[next]}
+                            </button>
+                          ))}
+                        </form>
+                      )}
+                    </article>
+                  );
+                })}
+                {(applicants ?? []).length === 0 && !applicantError && <p className="text-sm text-slate-600">No applications yet.</p>}
+              </div>
+            </section>
+          )}
         </>
       )}
     </AppShell>

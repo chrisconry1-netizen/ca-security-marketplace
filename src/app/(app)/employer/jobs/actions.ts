@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { safeNextPath } from "@/lib/auth/redirect";
 import { employerErrorCode } from "@/lib/employer/messages";
 import { formString, formStrings } from "@/lib/form";
+import { marketplaceErrorCode } from "@/lib/jobs/messages";
 import { JOB_STATUSES, type JobStatus } from "@/lib/jobs/state";
 import { jobFormSchema, jobReadyToPublish, jobWriteFromForm } from "@/lib/jobs/validation";
 import { createClient } from "@/lib/supabase/server";
@@ -162,4 +164,25 @@ export async function transitionJobStatus(fd: FormData) {
   }
   const notice = status === "pending_review" && target === "published" ? "job_pending" : status === "published" ? "job_published" : "saved";
   redirect(`/employer/jobs/${jobId}?notice=${notice}`);
+}
+
+const EMPLOYER_STATUSES = new Set(["reviewing", "shortlisted", "interview", "offered", "rejected"]);
+
+export async function setApplicationStatus(fd: FormData) {
+  await requireArea("employer");
+  const applicationId = formString(fd, "applicationId");
+  const status = formString(fd, "status");
+  const returnTo = safeNextPath(formString(fd, "returnTo"), "/employer/jobs");
+  if (!applicationId || !EMPLOYER_STATUSES.has(status)) redirect(`${returnTo}?error=invalid_input`);
+  const supabase = await createClient();
+  const meta = await requestMeta();
+  const { error } = await supabase.rpc("employer_set_application_status", {
+    p_application_id: applicationId,
+    p_status: status,
+    p_user_agent: meta.user_agent,
+    p_request_id: meta.request_id,
+    p_ip: meta.ip_address,
+  });
+  if (error) redirect(`${returnTo}?error=${marketplaceErrorCode(error.message)}`);
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}notice=status_updated`);
 }

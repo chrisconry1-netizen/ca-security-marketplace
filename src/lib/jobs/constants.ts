@@ -76,3 +76,42 @@ export function placeLooksPublic(value: string): boolean {
   if (!trimmed) return true;
   return !looksLikeStreetAddress(trimmed);
 }
+
+export { ORG_TYPES } from "@/lib/orgs/constants";
+
+export const SHIFT_PERIODS = [
+  { code: "day", label: "Day (6:00–14:00)" },
+  { code: "swing", label: "Swing (14:00–22:00)" },
+  { code: "night", label: "Night (22:00–6:00)" },
+] as const;
+
+export const ARMED_CREDENTIAL_CODES = ["ca_guard_registration", "ca_exposed_firearm_permit"] as const;
+
+export const APPLICATION_LABELS: Record<string, string> = {
+  submitted: "Submitted",
+  reviewing: "Reviewing",
+  shortlisted: "Shortlisted",
+  interview: "Interview",
+  offered: "Offered",
+  accepted: "Accepted",
+  declined: "Declined",
+  rejected: "Rejected",
+  withdrawn: "Withdrawn",
+};
+
+export const EMPLOYER_ACTION_LABELS: Record<string, string> = {
+  reviewing: "Mark reviewing",
+  shortlisted: "Shortlist",
+  interview: "Mark interview",
+  offered: "Offer",
+  rejected: "Reject",
+};
+
+export const PAGE_SIZE = 20;
+
+export const PUBLIC_JOB_COLUMNS =
+  "id, organization_id, title, description, job_type, category, is_armed, status, urgency, city, county, postal_code, approx_lat, approx_lng, shift_period, starts_at, ends_at, pay_type, pay_min_cents, pay_max_cents, workers_needed, min_years_experience, uniform_notes, vehicle_required, equipment_notes, application_deadline, published_at";
+
+export const PAY_DISCLAIMER = "Pay is entered by the employing organization. This marketplace does not set the wage or employ the worker.";
+export const HIRING_DISCLAIMER = "The organization named on this shift is the employer. Accepting an offer records that you and they agreed to the assignment. It does not make you an employee of this marketplace.";
+export const LOCATION_DISCLAIMER = "Distance uses an approximate city or ZIP point, rounded to about a kilometer. The work-site address is shown after you accept an offer.";
