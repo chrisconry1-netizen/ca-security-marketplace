@@ -45,6 +45,7 @@ export async function saveJob(fd: FormData) {
     minYears: formString(fd, "minYears"),
     uniformNotes: formString(fd, "uniformNotes"),
     vehicleRequired: formString(fd, "vehicleRequired") === "yes",
+    offDutyLe: formString(fd, "offDutyLe") === "yes",
     equipmentNotes: formString(fd, "equipmentNotes"),
     deadlineDate: formString(fd, "deadlineDate"),
     deadlineTime: formString(fd, "deadlineTime"),
@@ -76,6 +77,7 @@ export async function saveJob(fd: FormData) {
     min_years_experience: write.min_years_experience,
     uniform_notes: write.uniform_notes,
     vehicle_required: write.vehicle_required,
+    requires_off_duty_le: write.requires_off_duty_le,
     equipment_notes: write.equipment_notes,
     application_deadline: write.application_deadline,
   };

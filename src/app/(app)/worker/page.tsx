@@ -14,6 +14,10 @@ export default async function WorkerDashboard() {
           <h2 className="font-semibold text-slate-900">What&apos;s available for me to work?</h2>
           <p className="mt-1 text-sm text-slate-600">Search published shifts by city, pay, time, and the credentials a person has already verified.</p>
         </Link>
+        <Link href="/worker/recommended" className="rounded-xl border border-slate-200 bg-white p-4 hover:border-slate-900">
+          <h2 className="font-semibold text-slate-900">Recommended shifts</h2>
+          <p className="mt-1 text-sm text-slate-600">Suggestions from shifts that already pass the eligibility checks. You still choose whether to apply.</p>
+        </Link>
       </div>
     </AppShell>
   );

@@ -1,5 +1,6 @@
 export const workerNav = [
   { href: "/worker/shifts", label: "Find shifts", ready: true },
+  { href: "/worker/recommended", label: "Recommended", ready: true },
   { href: "/worker/saved", label: "Saved", ready: true },
   { href: "/worker/applications", label: "Applications", ready: true },
   { href: "/worker/profile", label: "Profile", ready: true },

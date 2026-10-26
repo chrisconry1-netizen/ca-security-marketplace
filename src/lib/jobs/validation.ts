@@ -32,6 +32,7 @@ export const jobFormSchema = z.object({
   minYears: z.union([z.literal(""), z.coerce.number().int().min(0).max(70)]),
   uniformNotes: z.string().trim().max(2000),
   vehicleRequired: z.boolean(),
+  offDutyLe: z.boolean(),
   equipmentNotes: z.string().trim().max(2000),
   deadlineDate: day,
   deadlineTime: clock,
@@ -61,6 +62,7 @@ export interface JobWrite {
   min_years_experience: number | null;
   uniform_notes: string | null;
   vehicle_required: boolean;
+  requires_off_duty_le: boolean;
   equipment_notes: string | null;
   application_deadline: string | null;
   site_address: string | null;
@@ -112,6 +114,7 @@ export function jobWriteFromForm(input: JobFormInput): JobWrite | null {
     min_years_experience: input.minYears === "" ? null : input.minYears,
     uniform_notes: input.uniformNotes || null,
     vehicle_required: input.vehicleRequired,
+    requires_off_duty_le: input.offDutyLe,
     equipment_notes: input.equipmentNotes || null,
     application_deadline: deadline,
     site_address: input.siteAddress || null,
@@ -145,7 +148,7 @@ export function jobReadyToPublish(job: JobWrite): boolean {
 }
 
 export const JOB_COLUMNS =
-  "id, organization_id, created_by, title, description, job_type, category, is_armed, status, urgency, city, county, postal_code, starts_at, ends_at, recurrence_rule, pay_type, pay_min_cents, pay_max_cents, workers_needed, min_years_experience, uniform_notes, vehicle_required, equipment_notes, application_deadline, published_at, created_at";
+  "id, organization_id, created_by, title, description, job_type, category, is_armed, status, urgency, city, county, postal_code, starts_at, ends_at, recurrence_rule, pay_type, pay_min_cents, pay_max_cents, workers_needed, min_years_experience, uniform_notes, vehicle_required, requires_off_duty_le, equipment_notes, application_deadline, published_at, created_at";
 
 export function compensationLine(payType: string, minCents: number | null, maxCents: number | null): string {
   const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;

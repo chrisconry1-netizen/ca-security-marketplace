@@ -7,8 +7,10 @@
 --
 -- Do not require private = true. realtime.authorize() inserts probe rows
 -- without setting private, and the column defaults to false.
-
-alter table realtime.messages enable row level security;
+--
+-- Do not ALTER realtime.messages to enable row level security. Hosted
+-- Supabase already has RLS on that table. The statement fails with
+-- 42501 when this file is not run as the table owner.
 
 drop policy if exists conversation_realtime_select on realtime.messages;
 create policy conversation_realtime_select on realtime.messages

@@ -110,7 +110,7 @@ User request ─► Orchestrator ─► (1) intent + parameter extraction (Grok,
 ```
 - Typed tools (Zod schemas, read-only by default): `search_jobs`, `get_job`, `search_workers`, `get_worker_profile`, `get_verified_credentials`, `get_worker_availability`, `get_job_requirements`, `get_applicants`, `get_assignments`. Draft tools (`draft_application`, `draft_message`) return text only. Consequential tools (`submit_application`, `send_message`) create a **pending action** that the user must confirm in the UI. Grok never executes them directly. The assistant has no tools for accept/reject/hire/admin.
 - Grok cannot override eligibility. Ineligible candidates are never passed to the model.
-- Match explanations are built from structured reason codes (`AVAILABLE`, `DISTANCE_MI`, `CRED_VERIFIED`, `EXPERIENCE_YEARS`), not free text. The score is computed deterministically. Grok only orders ties or near-ties and writes a one-line summary drawn from the facts.
+- Match explanations are built on the server from structured reason codes, not from model prose. The score is computed deterministically. Grok, when configured, only orders the already-eligible set and returns ids plus reason codes. See `docs/PHASE6.md`.
 - Prompt-injection defenses: user content and DB text are passed as delimited data, tool allowlist per role, output schema validation, no secrets in prompts, PII minimization (no license numbers, documents, or addresses).
 - Every tool call is logged to `ai_tool_calls`, with tokens counted for cost dashboards. A per-user daily AI quota is tied to plan entitlements.
 
