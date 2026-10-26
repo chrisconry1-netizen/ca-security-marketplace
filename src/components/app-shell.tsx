@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { logout } from "@/app/(auth)/actions";
+import { PRODUCT_NAME } from "@/lib/brand";
 import type { SessionContext } from "@/server/auth/guards";
 
 export function AppShell({ ctx, title, nav, children }: { ctx: SessionContext; title: string; nav: { href: string; label: string; ready?: boolean }[]; children: ReactNode }) {
@@ -8,7 +9,8 @@ export function AppShell({ ctx, title, nav, children }: { ctx: SessionContext; t
     <div className="min-h-dvh bg-slate-50">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <Link href="/dashboard" className="font-bold text-slate-900">{title}</Link>
+          <Link href="/dashboard" className="font-bold text-slate-900">{PRODUCT_NAME}</Link>
+          <span className="text-sm font-medium text-slate-500">{title}</span>
           <form action={logout}>
             <button type="submit" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100">
               Sign out
