@@ -17,8 +17,17 @@ export function AuthCard({ title, subtitle, children }: { title: string; subtitl
   );
 }
 
-export function Notice({ code, tone = "error" }: { code?: string | string[]; tone?: "error" | "info" }) {
-  const msg = authMessage(Array.isArray(code) ? code[0] : code);
+export function Notice({
+  code,
+  tone = "error",
+  messages,
+}: {
+  code?: string | string[];
+  tone?: "error" | "info";
+  messages?: Record<string, string>;
+}) {
+  const key = Array.isArray(code) ? code[0] : code;
+  const msg = messages ? (typeof key === "string" ? messages[key] : undefined) : authMessage(key);
   if (!msg) return null;
   const cls = tone === "error" ? "bg-red-50 text-red-800 border-red-200" : "bg-emerald-50 text-emerald-800 border-emerald-200";
   return (

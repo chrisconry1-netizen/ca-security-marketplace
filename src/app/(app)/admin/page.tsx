@@ -11,11 +11,11 @@ export default async function AdminDashboard() {
     ? await (await createClient()).from("audit_logs").select("id, occurred_at, actor_type, action, entity_type").order("occurred_at", { ascending: false }).limit(20)
     : { data: null };
   return (
-    <AppShell ctx={ctx} title="Admin" nav={[{ href: "/admin/verification", label: "Verification" }, { href: "/admin/reports", label: "Reports" }, { href: "/admin/users", label: "Users" }, { href: "/admin/audit", label: "Audit" }]}>
+    <AppShell ctx={ctx} title="Admin" nav={[{ href: "/admin/verification", label: "Verification", ready: true }, { href: "/admin/reports", label: "Reports" }, { href: "/admin/users", label: "Users" }, { href: "/admin/audit", label: "Audit" }]}>
       <h1 className="mt-2 text-2xl font-bold text-slate-900">Trust &amp; operations</h1>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <PlaceholderCard title="Verification queues" body="Worker/employer/credential review arrives in later phases. No automated rejections." />
-        <PlaceholderCard title="Reports & moderation" body="Arrives in Phase 12." />
+        <PlaceholderCard title="Credential review" body="Pending worker credentials are in the verification queue. Decisions are human. Nothing is verified automatically." />
+        <PlaceholderCard title="Reports & moderation" body="The rest of the admin center arrives in a later phase." />
       </div>
       <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="font-semibold text-slate-900">Recent audit events</h2>

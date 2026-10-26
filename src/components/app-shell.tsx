@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { logout } from "@/app/(auth)/actions";
 import type { SessionContext } from "@/server/auth/guards";
 
-export function AppShell({ ctx, title, nav, children }: { ctx: SessionContext; title: string; nav: { href: string; label: string }[]; children: ReactNode }) {
+export function AppShell({ ctx, title, nav, children }: { ctx: SessionContext; title: string; nav: { href: string; label: string; ready?: boolean }[]; children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-slate-50">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
@@ -16,11 +16,17 @@ export function AppShell({ ctx, title, nav, children }: { ctx: SessionContext; t
           </form>
         </div>
         <nav aria-label="Section" className="mx-auto flex max-w-5xl gap-2 overflow-x-auto px-4 pb-3">
-          {nav.map((n) => (
-            <span key={n.href} className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-500" title="Coming in a later phase">
-              {n.label}
-            </span>
-          ))}
+          {nav.map((n) =>
+            n.ready ? (
+              <Link key={n.href} href={n.href} className="whitespace-nowrap rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white">
+                {n.label}
+              </Link>
+            ) : (
+              <span key={n.href} className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-500" title="Coming in a later phase">
+                {n.label}
+              </span>
+            ),
+          )}
         </nav>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">
