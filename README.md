@@ -41,7 +41,7 @@ src/app/jobs                       public shift search and detail
 src/app/(app)/worker/{profile,credentials,availability,shifts,saved,applications}
 src/app/(app)/employer/{org,jobs} organization, shift drafts, applicants
 src/app/(app)/admin/verification  moderator credential queue (full admin center is later)
-supabase/migrations/              0000 schema · 0001 auth · 0002 storage · 0003 profiles/credentials · 0004 advisor · 0005 marketplace
+supabase/migrations/              0000 schema · 0001 auth · 0002 storage · 0003 profiles/credentials · 0004 advisor · 20261026065707 employer portal · 20261026072821 column privileges · 20261026120000 marketplace
 tests/{unit,rls,e2e}
-docs/                             ARCHITECTURE, ENV_VARS, COMPLIANCE_REVIEW, PHASE1, PHASE2, PHASE4
+docs/                             ARCHITECTURE, ENV_VARS, COMPLIANCE_REVIEW, PHASE1, PHASE2, PHASE3, PHASE4
 ```

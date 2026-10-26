@@ -46,7 +46,11 @@ test("worker finds a shift, applies, and accepts an offer on a phone", async ({ 
     await page.getByLabel("Organization type").selectOption("ppo");
     await page.getByRole("button", { name: "Create organization" }).click();
     await expect(page.getByText(orgName)).toBeVisible();
+    await db.query("begin");
+    await db.query("select set_config('app.org_verification_transition', '1', true)");
+    await db.query("update public.organizations set verification_status='pending' where name=$1", [orgName]);
     await db.query("update public.organizations set verification_status='verified', verified_at=now() where name=$1", [orgName]);
+    await db.query("commit");
 
     await page.getByRole("link", { name: "Jobs & shifts" }).click();
     await page.getByRole("link", { name: "Post a shift" }).click();

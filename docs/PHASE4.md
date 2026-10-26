@@ -70,16 +70,20 @@ The plan is in the test run’s `search-explain.txt` artifact. The 2,000 rows we
 | `npm run typecheck` | pass |
 | `npm run build` | pass |
 | `npm test` | 52 passed |
-| `npm run test:rls` | 73 passed (existing Phase 1–2 suite plus 8 Phase 4 tests) |
+| `npm run test:rls` | 87 passed (Phase 1: 48, Phase 2: 17, Phase 3: 14, Phase 4: 8). None skipped. |
 | `npm run test:e2e` | 7 passed, viewport 390×844, including search → detail (no street address) → blocked apply → verified credential → apply → employer shortlist → offer → worker accept (address visible) → signed-out visitor still sees no street address |
 
 `supabase/seed.sql` is still a no-op. Place centroids are reference rows in the migration, not fake users or jobs.
 
 Phase 4 RLS coverage: a worker cannot read another worker’s application or set an employer status; an employer sees applications only for their own organization’s jobs; anon reads published public columns only and cannot select private site columns or call `job_private_site`; withdrawn and rejected rows cannot move backward; assignment insert is rejected except through `accept_offer`.
 
+## RLS count
+
+The first Phase 4 run reported 73 passed. That was Phase 1 (48, including four `it.each` cases), Phase 2 (17), and Phase 4 (8). No Phase 1 or Phase 2 case was removed, skipped, or merged. Phase 3’s 14 cases in `tests/rls/phase3.rls.test.ts` were not on this branch: it was cut from the Phase 2 commit before Phase 3 merged to `main`. The full suite now runs all four files: 48 + 17 + 14 + 8 = 87. The Phase 2 employer-profile case is the Phase 3 version, which reads `worker_search_cards` instead of `worker_profiles`.
+
 ## Database
 
-Additive migration `supabase/migrations/0005_job_marketplace.sql` only. No tables or columns were dropped. RLS stays forced. New policies use `(select auth.uid())` or a `search_path`-pinned definer (`app.worker_has_job_access`) so a job policy does not read `applications` under RLS and recurse. Client `INSERT` on `applications` was removed. `saved_jobs` inserts require the worker id and a published shift.
+Phase 3 migrations `20261026065707_employer_portal.sql` and `20261026072821_column_privileges.sql` are on this branch unchanged. Marketplace SQL is `supabase/migrations/20261026120000_job_marketplace.sql`, which runs after them. No tables or columns were dropped. RLS stays forced. Applicant access is folded into the existing `jobs_auth_read` and `jr_read` policies, so Phase 3’s one-authenticated-SELECT-policy check still holds. `app.worker_has_job_access` is a `search_path`-pinned definer so a job policy does not read `applications` under RLS and recurse. Client `INSERT` on `applications` was removed. `saved_jobs` inserts require the worker id and a published shift. Street addresses are written to `job_private_locations`. `app.guard_job_write` keeps Phase 3’s status machine and adds the public approximate point.
 
 ## Known issues
 

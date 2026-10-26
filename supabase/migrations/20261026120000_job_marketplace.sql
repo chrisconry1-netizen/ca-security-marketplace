@@ -1,15 +1,17 @@
 -- =====================================================================
--- 0005_job_marketplace.sql — Phase 4 job & shift marketplace
--- Additive only: new columns, reference rows, functions, indexes, and
--- tighter privileges. No tables, columns, or rows are dropped.
+-- 20261026120000_job_marketplace.sql — Phase 4 job & shift marketplace
+-- Runs after the Phase 3 employer portal. Additive: new columns, reference
+-- rows, functions, indexes, and tighter privileges. No tables or columns
+-- are dropped. Phase 3's create_organization, transition_job, and the one
+-- authenticated SELECT policy per overlapping table stay in place.
 --
 -- Public radius search uses approximate coordinates only:
 --   * jobs.approx_lat / approx_lng, rounded to 0.01 degrees (~1 km)
 --   * filled from public.place_centroids (California city / ZIP centroids)
---     or from an employer-entered approximate point, never from site_lat
---     / site_lng
--- Private site_address_private, site_lat, and site_lng are not selectable
--- by anon or authenticated. Authorized callers use public.job_private_site.
+--     or from an employer-entered approximate point, never from a site pin
+-- The street address stays in job_private_locations. jobs.site_address_private,
+-- site_lat, and site_lng stay unselectable. Authorized callers use
+-- public.job_private_site, which reads the private-location row.
 --
 -- Geocoding providers are not called. PostGIS is not required; distance is
 -- a bounding box plus haversine on the approximate point.
@@ -337,6 +339,8 @@ $$;
 -- ---------------------------------------------------------------------
 -- Job write guard. Public coordinates never copy the private site pin.
 -- ---------------------------------------------------------------------
+-- Extends Phase 3's guard: same status machine and the ban on writing
+-- jobs.site_address_private, plus the public approximate point and shift bucket.
 create or replace function app.guard_job_write()
 returns trigger
 language plpgsql
@@ -345,12 +349,15 @@ as $$
 declare
   v_lat numeric;
   v_lng numeric;
-  v_transition text := current_setting('app.job_status_transition', true);
+  v_verified boolean;
 begin
+  if new.site_address_private is not null then
+    raise exception 'use job_private_locations' using errcode = '42501';
+  end if;
+
   new.city := nullif(btrim(coalesce(new.city, '')), '');
   new.county := nullif(btrim(coalesce(new.county, '')), '');
   new.postal_code := nullif(btrim(coalesce(new.postal_code, '')), '');
-  new.site_address_private := nullif(btrim(coalesce(new.site_address_private, '')), '');
 
   if app.looks_like_street(new.city) or app.looks_like_street(new.county) then
     raise exception 'public location cannot be a street address' using errcode = '22023';
@@ -377,8 +384,8 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
-    if v_transition is distinct from 'publish' and new.status not in ('draft', 'pending_review') then
-      raise exception 'new jobs start as draft or pending review' using errcode = '42501';
+    if new.status is distinct from 'draft' or new.published_at is not null then
+      raise exception 'new jobs start as drafts' using errcode = '42501';
     end if;
     return new;
   end if;
@@ -389,20 +396,29 @@ begin
     raise exception 'job identity is immutable' using errcode = '42501';
   end if;
 
-  if new.status is not distinct from old.status then
-    return new;
-  end if;
-
-  if v_transition = 'publish'
-     and old.status in ('draft', 'pending_review')
-     and new.status in ('published', 'pending_review') then
-    if new.status = 'published' then
-      new.published_at := coalesce(old.published_at, pg_catalog.now());
+  if new.status is distinct from old.status then
+    if current_setting('app.job_status_transition', true) is distinct from '1' then
+      raise exception 'status is server-managed' using errcode = '42501';
     end if;
-    return new;
+    select o.verification_status = 'verified' into v_verified
+    from public.organizations o
+    where o.id = new.organization_id;
+    if not app.job_transition_ok(old.status, new.status, coalesce(v_verified, false)) then
+      raise exception 'illegal job transition' using errcode = '42501';
+    end if;
+    if new.status in ('pending_review', 'published') and not app.job_post_complete(new) then
+      raise exception 'job is incomplete' using errcode = '22023';
+    end if;
+    if new.status = 'published' and old.status is distinct from 'published' and new.published_at is null then
+      new.published_at := pg_catalog.now();
+    end if;
   end if;
 
-  raise exception 'job status is not client-writable' using errcode = '42501';
+  if new.published_at is distinct from old.published_at
+     and not (new.status = 'published' and old.status is distinct from 'published') then
+    raise exception 'published_at is server-managed' using errcode = '42501';
+  end if;
+  return new;
 end
 $$;
 
@@ -614,17 +630,35 @@ as $$
   )
 $$;
 
-revoke all on function app.worker_has_job_access(uuid) from public;
-grant execute on function app.worker_has_job_access(uuid) to authenticated, service_role;
+revoke all on function app.worker_has_job_access(uuid) from public, anon;
+grant execute on function app.worker_has_job_access(uuid) to anon, authenticated, service_role;
 
--- Applicants can keep reading a shift after it leaves the public list.
-create policy jobs_applicant_read on public.jobs
+-- Fold applicant access into the existing authenticated SELECT policies.
+-- A second permissive SELECT policy would undo Phase 3's one-policy-per-role check.
+drop policy if exists jobs_auth_read on public.jobs;
+create policy jobs_auth_read on public.jobs
   for select to authenticated
-  using (app.worker_has_job_access(id));
+  using (
+    status = 'published'
+    or app.is_org_member(organization_id)
+    or app.is_staff()
+    or app.worker_has_job_access(id)
+  );
 
-create policy jr_applicant_read on public.job_requirements
-  for select to authenticated
-  using (app.worker_has_job_access(job_id));
+drop policy if exists jr_read on public.job_requirements;
+create policy jr_read on public.job_requirements
+  for select to anon, authenticated
+  using (
+    exists (
+      select 1 from public.jobs j
+      where j.id = job_id
+        and (
+          j.status = 'published'
+          or app.is_org_member(j.organization_id)
+          or app.worker_has_job_access(j.id)
+        )
+    )
+  );
 
 -- Direct inserts skip the credential and duplicate checks. submit_application is the only insert path.
 drop policy if exists app_worker_insert on public.applications;
@@ -649,64 +683,6 @@ create policy sj_owner_insert on public.saved_jobs
 -- ---------------------------------------------------------------------
 -- Organization + job writes
 -- ---------------------------------------------------------------------
-create or replace function public.create_organization(
-  p_name text,
-  p_org_type public.org_type,
-  p_description text default null,
-  p_user_agent text default null,
-  p_request_id text default null,
-  p_ip text default null
-) returns uuid
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_uid uuid := auth.uid();
-  v_type public.account_type;
-  v_status public.account_status;
-  v_name text := nullif(btrim(coalesce(p_name, '')), '');
-  v_description text := nullif(btrim(coalesce(p_description, '')), '');
-  v_id uuid;
-begin
-  if v_uid is null then
-    raise exception 'not authenticated' using errcode = '42501';
-  end if;
-  select account_type, status into v_type, v_status from public.profiles where id = v_uid;
-  if v_type is distinct from 'employer' or v_status in ('suspended', 'deactivated') then
-    raise exception 'account not active' using errcode = '42501';
-  end if;
-  if v_name is null or char_length(v_name) > 200 then
-    raise exception 'invalid organization name' using errcode = '22023';
-  end if;
-  if v_description is not null and char_length(v_description) > 5000 then
-    raise exception 'description is too long' using errcode = '22023';
-  end if;
-  if not exists (select 1 from auth.users u where u.id = v_uid and u.email_confirmed_at is not null) then
-    raise exception 'email not verified' using errcode = '42501';
-  end if;
-
-  insert into public.organizations (name, org_type, description, verification_status, created_by)
-  values (v_name, p_org_type, v_description, 'unverified', v_uid)
-  returning id into v_id;
-
-  insert into public.organization_members (organization_id, user_id, role)
-  values (v_id, v_uid, 'owner_admin');
-
-  update public.employer_profiles
-     set primary_organization_id = v_id
-   where user_id = v_uid and primary_organization_id is null;
-
-  perform app.audit_marketplace(
-    v_uid, 'organization.create', 'organization', v_id, v_id,
-    null,
-    jsonb_build_object('name', v_name, 'org_type', p_org_type, 'verification_status', 'unverified'),
-    p_user_agent, p_request_id, p_ip
-  );
-  return v_id;
-end
-$$;
-
 create or replace function public.save_job_draft(
   p_organization_id uuid,
   p_job_id uuid,
@@ -822,12 +798,12 @@ begin
   if p_job_id is null then
     insert into public.jobs (
       organization_id, created_by, title, description, job_type, category, is_armed, status, urgency,
-      city, county, postal_code, site_address_private, site_lat, site_lng, approx_lat, approx_lng,
+      city, county, postal_code, approx_lat, approx_lng,
       starts_at, ends_at, pay_type, pay_min_cents, pay_max_cents, workers_needed, min_years_experience,
       uniform_notes, vehicle_required, equipment_notes, application_deadline
     ) values (
       p_organization_id, v_uid, v_title, v_description, p_job_type, p_category, coalesce(p_is_armed, false), 'draft', coalesce(p_urgency, 'normal'),
-      p_city, p_county, p_postal_code, p_site_address_private, p_site_lat, p_site_lng, p_approx_lat, p_approx_lng,
+      p_city, p_county, p_postal_code, p_approx_lat, p_approx_lng,
       v_starts, v_ends, p_pay_type, p_pay_min_cents, p_pay_max_cents, v_needed, p_min_years,
       v_uniform, coalesce(p_vehicle_required, false), v_equipment, v_deadline
     ) returning id into v_id;
@@ -850,9 +826,6 @@ begin
       city = p_city,
       county = p_county,
       postal_code = p_postal_code,
-      site_address_private = p_site_address_private,
-      site_lat = p_site_lat,
-      site_lng = p_site_lng,
       approx_lat = p_approx_lat,
       approx_lng = p_approx_lng,
       starts_at = v_starts,
@@ -868,6 +841,17 @@ begin
       application_deadline = v_deadline
     where id = p_job_id;
     delete from public.job_requirements where job_id = p_job_id;
+  end if;
+
+  -- Street text lives in job_private_locations. The jobs pin columns stay empty.
+  if nullif(btrim(coalesce(p_site_address_private, '')), '') is not null then
+    insert into public.job_private_locations (job_id, site_address)
+    values (v_id, btrim(p_site_address_private))
+    on conflict (job_id) do update
+      set site_address = excluded.site_address,
+          updated_at = pg_catalog.now();
+  else
+    delete from public.job_private_locations where job_id = v_id;
   end if;
 
   insert into public.job_requirements (job_id, credential_type_id, is_mandatory)
@@ -944,10 +928,9 @@ begin
   select verification_status into v_org_status from public.organizations where id = v_job.organization_id;
   v_next := case when v_org_status = 'verified' then 'published'::public.job_status else 'pending_review'::public.job_status end;
 
-  perform set_config('app.job_status_transition', 'publish', true);
+  perform set_config('app.job_status_transition', '1', true);
   update public.jobs
-     set status = v_next,
-         published_at = case when v_next = 'published' then pg_catalog.now() else published_at end
+     set status = v_next
    where id = p_job_id;
 
   perform app.audit_marketplace(
@@ -1160,9 +1143,9 @@ begin
     return;
   end if;
   return query
-  select j.site_address_private, j.site_lat, j.site_lng
-  from public.jobs j
-  where j.id = p_job_id;
+  select l.site_address, null::numeric, null::numeric
+  from public.job_private_locations l
+  where l.job_id = p_job_id;
 end
 $$;
 
@@ -1536,7 +1519,6 @@ begin
 end
 $$;
 
-revoke all on function public.create_organization(text, public.org_type, text, text, text, text) from public, anon;
 revoke all on function public.save_job_draft(uuid, uuid, text, text, public.job_type, public.security_category, boolean, public.job_urgency, text, text, text, text, numeric, numeric, numeric, numeric, text, text, public.pay_type, integer, integer, smallint, smallint, text, boolean, text, text, text[], text[], text, text, text) from public, anon;
 revoke all on function public.publish_job(uuid, text, text, text) from public, anon;
 revoke all on function public.search_jobs(numeric, numeric, numeric, text, text, integer, date, text, time, time, public.security_category, boolean, text, smallint, uuid, public.job_type, text, boolean, integer, integer) from public, anon;
@@ -1548,7 +1530,6 @@ revoke all on function public.employer_set_application_status(uuid, public.appli
 revoke all on function public.decline_offer(uuid, text, text, text) from public, anon;
 revoke all on function public.accept_offer(uuid, text, text, text) from public, anon;
 
-grant execute on function public.create_organization(text, public.org_type, text, text, text, text) to authenticated;
 grant execute on function public.save_job_draft(uuid, uuid, text, text, public.job_type, public.security_category, boolean, public.job_urgency, text, text, text, text, numeric, numeric, numeric, numeric, text, text, public.pay_type, integer, integer, smallint, smallint, text, boolean, text, text, text[], text[], text, text, text) to authenticated;
 grant execute on function public.publish_job(uuid, text, text, text) to authenticated;
 grant execute on function public.search_jobs(numeric, numeric, numeric, text, text, integer, date, text, time, time, public.security_category, boolean, text, smallint, uuid, public.job_type, text, boolean, integer, integer) to anon, authenticated;

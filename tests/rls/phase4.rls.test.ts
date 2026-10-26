@@ -120,7 +120,19 @@ beforeAll(async () => {
   const other = await otherEmployer.client.rpc("create_organization", { p_name: `Other Org ${worker.id.slice(0, 8)}`, p_org_type: "corporate" });
   if (other.error || !other.data) throw new Error(other.error?.message ?? "create other org failed");
   otherOrgId = other.data as string;
-  await pool.query("update public.organizations set verification_status='verified', verified_at=now() where id=$1", [orgId]);
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query("select set_config('app.org_verification_transition', '1', true)");
+    await client.query("update public.organizations set verification_status='pending' where id=$1", [orgId]);
+    await client.query(
+      "update public.organizations set verification_status='verified', verified_at=now() where id=$1",
+      [orgId],
+    );
+    await client.query("commit");
+  } finally {
+    client.release();
+  }
 
   openJob = await saveDraft(employer.client, orgId, "Open lobby shift");
   withdrawJob = await saveDraft(employer.client, orgId, "Withdraw lobby shift");
@@ -319,13 +331,13 @@ describe("search plan", () => {
     let plan = "";
     try {
       await client.query("begin");
-      await client.query("select set_config('app.job_status_transition', 'publish', true)");
+      await client.query("select set_config('app.job_status_transition', '1', true)");
       await client.query(
         `insert into public.jobs (
            organization_id, title, description, job_type, category, is_armed, status, urgency,
            city, county, postal_code, approx_lat, approx_lng, pay_type, pay_min_cents, workers_needed, starts_at, ends_at
          )
-         select $1, 'Load '||g, 'Explain-only shift', 'single_shift', 'unarmed_security', false, 'published',
+         select $1, 'Load '||g, 'Explain-only shift for the planner.', 'single_shift', 'unarmed_security', false, 'draft',
                 case when g % 20 = 0 then 'urgent'::public.job_urgency else 'normal'::public.job_urgency end,
                 'Oakland', 'Alameda', '94612',
                 round((32.5 + (g % 80) * 0.08)::numeric, 2),
@@ -333,6 +345,10 @@ describe("search plan", () => {
                 'hourly', 2500, 1,
                 timestamptz '2026-12-01 17:00+00', timestamptz '2026-12-01 21:00+00'
          from generate_series(1, 2000) g`,
+        [orgId],
+      );
+      await client.query(
+        "update public.jobs set status = 'published' where organization_id = $1 and title like 'Load %'",
         [orgId],
       );
       await client.query("analyze public.jobs");
