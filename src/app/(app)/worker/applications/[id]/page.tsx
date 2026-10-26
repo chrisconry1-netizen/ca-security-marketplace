@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/ui";
+import { openConversation } from "@/app/(app)/messages/actions";
 import { acceptOffer, declineOffer, withdrawApplication } from "@/app/jobs/actions";
 import { APPLICATION_LABELS, HIRING_DISCLAIMER, PUBLIC_JOB_COLUMNS } from "@/lib/jobs/constants";
 import { JOB_MESSAGES } from "@/lib/jobs/messages";
+import { MESSAGING_MESSAGES } from "@/lib/messaging/messages";
 import { embedded, formatJobPay, formatShiftWhen } from "@/lib/jobs/present";
 import { canWorkerTransition, type ApplicationStatus } from "@/lib/jobs/state";
 import { workerNav } from "@/lib/nav";
@@ -39,8 +41,8 @@ export default async function ApplicationDetailPage({
 
   return (
     <AppShell ctx={ctx} title="Worker" nav={workerNav}>
-      <Notice code={sp.notice} tone="info" messages={JOB_MESSAGES} />
-      <Notice code={sp.error} messages={JOB_MESSAGES} />
+      <Notice code={sp.notice} tone="info" messages={{ ...JOB_MESSAGES, ...MESSAGING_MESSAGES }} />
+      <Notice code={sp.error} messages={{ ...JOB_MESSAGES, ...MESSAGING_MESSAGES }} />
       <p className="mt-2 text-sm">
         <Link href="/worker/applications" className="font-semibold underline">
           All applications
@@ -67,6 +69,13 @@ export default async function ApplicationDetailPage({
         <Link href={`/jobs/${job.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold">
           View shift
         </Link>
+        <form action={openConversation}>
+          <input type="hidden" name="applicationId" value={application.id} />
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <button type="submit" className="min-h-11 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white">
+            Message employer
+          </button>
+        </form>
         {canWorkerTransition(status, "withdrawn") && (
           <form action={withdrawApplication}>
             <input type="hidden" name="applicationId" value={application.id} />

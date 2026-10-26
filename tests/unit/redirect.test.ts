@@ -20,7 +20,9 @@ describe("isProtectedPath", () => {
     expect(isProtectedPath("/admin")).toBe(true);
     expect(isProtectedPath("/admin/users")).toBe(true);
     expect(isProtectedPath("/administrator")).toBe(false);
-    expect(isProtectedPath("/login")).toBe(false);
+    expect(isProtectedPath("/messages")).toBe(true);
+    expect(isProtectedPath("/messages/abc")).toBe(true);
+    expect(isProtectedPath("/messagesomething")).toBe(false);
     expect(isProtectedPath("/")).toBe(false);
   });
 });

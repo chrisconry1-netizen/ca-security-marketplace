@@ -12,7 +12,7 @@ export function safeNextPath(next: unknown, fallback = "/dashboard"): string {
   }
 }
 
-export const PROTECTED_PREFIXES = ["/dashboard", "/worker", "/employer", "/admin", "/account-type", "/reset-password"];
+export const PROTECTED_PREFIXES = ["/dashboard", "/worker", "/employer", "/admin", "/account-type", "/reset-password", "/messages"];
 
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));

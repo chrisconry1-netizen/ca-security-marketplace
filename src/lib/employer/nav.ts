@@ -4,7 +4,8 @@ export const employerNav = [
   { href: "/employer/team", label: "Team", ready: true },
   { href: "/employer/jobs", label: "Jobs & shifts", ready: true },
   { href: "/employer/applicants", label: "Applicants" },
-  { href: "/employer/workers", label: "Find workers" },
+  { href: "/employer/workers", label: "Find workers", ready: true },
+  { href: "/messages", label: "Messages", ready: true },
 ];
 
 export const adminNav = [
