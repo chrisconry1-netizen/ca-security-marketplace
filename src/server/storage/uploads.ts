@@ -25,6 +25,20 @@ export async function uploadAvatar(supabase: SupabaseClient, userId: string, fil
   return path;
 }
 
+export async function uploadOrgLogo(supabase: SupabaseClient, organizationId: string, file: File): Promise<string | null> {
+  const bytes = await bytesOf(file);
+  if (!bytes) return null;
+  const sniffed = sniffAvatar(bytes);
+  if (!sniffed) return null;
+  const path = `${organizationId}/${randomUUID()}.${sniffed.ext}`;
+  const { error } = await supabase.storage.from("org-logos").upload(path, bytes, { contentType: sniffed.mime, upsert: false });
+  if (error) {
+    console.error("storage.org_logo_upload_failed", error.message);
+    return null;
+  }
+  return path;
+}
+
 export async function uploadCredentialDocument(supabase: SupabaseClient, userId: string, file: File): Promise<string | null> {
   const bytes = await bytesOf(file);
   if (!bytes) return null;

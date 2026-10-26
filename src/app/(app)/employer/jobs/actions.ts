@@ -1,128 +1,169 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { safeNextPath } from "@/lib/auth/redirect";
+import { employerErrorCode } from "@/lib/employer/messages";
 import { formString, formStrings } from "@/lib/form";
 import { marketplaceErrorCode } from "@/lib/jobs/messages";
-import { jobDraftSchema, jobErrorCode, optionalCoord } from "@/lib/jobs/validation";
-import { dollarsToCents } from "@/lib/workers/validation";
-import { safeNextPath } from "@/lib/auth/redirect";
+import { JOB_STATUSES, type JobStatus } from "@/lib/jobs/state";
+import { jobFormSchema, jobReadyToPublish, jobWriteFromForm } from "@/lib/jobs/validation";
 import { createClient } from "@/lib/supabase/server";
 import { requestMeta } from "@/server/audit/audit";
 import { requireArea } from "@/server/auth/guards";
 
-function fail(path: string, code: string): never {
-  redirect(`${path}${path.includes("?") ? "&" : "?"}error=${code}`);
+function member(ctx: { orgMemberships: { organization_id: string }[] }, orgId: string) {
+  return ctx.orgMemberships.some((membership) => membership.organization_id === orgId);
 }
 
-function localTime(value: string): string {
-  const match = value.trim().match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-  return match?.[1] ?? value.trim();
-}
-
-export async function saveJobDraft(fd: FormData) {
+export async function saveJob(fd: FormData) {
   const ctx = await requireArea("employer");
   const organizationId = formString(fd, "organizationId");
   const jobId = formString(fd, "jobId");
-  const returnTo = safeNextPath(formString(fd, "returnTo"), jobId ? `/employer/jobs/${jobId}` : "/employer/jobs/new");
-  if (!ctx.orgMemberships.some((membership) => membership.organization_id === organizationId)) fail(returnTo, "not_a_member");
+  const back = jobId ? `/employer/jobs/${jobId}/edit` : `/employer/jobs/new?org=${organizationId}`;
+  if (!member(ctx, organizationId)) redirect("/forbidden");
 
-  const parsed = jobDraftSchema.safeParse({
+  const parsed = jobFormSchema.safeParse({
     title: formString(fd, "title"),
     description: formString(fd, "description"),
     jobType: formString(fd, "jobType"),
     category: formString(fd, "category"),
-    armed: formString(fd, "armed") || "no",
-    urgency: formString(fd, "urgency") || "normal",
+    armed: formString(fd, "armed") === "yes",
+    urgency: formString(fd, "urgency"),
     city: formString(fd, "city"),
     county: formString(fd, "county"),
     postalCode: formString(fd, "postalCode"),
     siteAddress: formString(fd, "siteAddress"),
-    siteLat: formString(fd, "siteLat"),
-    siteLng: formString(fd, "siteLng"),
-    approxLat: formString(fd, "approxLat"),
-    approxLng: formString(fd, "approxLng"),
-    startsLocal: localTime(formString(fd, "startsLocal")),
-    endsLocal: localTime(formString(fd, "endsLocal")),
-    payType: formString(fd, "payType") || "hourly",
+    startDate: formString(fd, "startDate"),
+    startTime: formString(fd, "startTime"),
+    endDate: formString(fd, "endDate"),
+    endTime: formString(fd, "endTime"),
+    recurrenceDays: formStrings(fd, "recurrenceDays"),
+    payType: formString(fd, "payType"),
     payMin: formString(fd, "payMin"),
     payMax: formString(fd, "payMax"),
-    workersNeeded: formString(fd, "workersNeeded") || "1",
+    workersNeeded: formString(fd, "workersNeeded"),
     minYears: formString(fd, "minYears"),
     uniformNotes: formString(fd, "uniformNotes"),
-    vehicleRequired: fd.get("vehicleRequired") === "on",
+    vehicleRequired: formString(fd, "vehicleRequired") === "yes",
     equipmentNotes: formString(fd, "equipmentNotes"),
-    deadlineLocal: localTime(formString(fd, "deadlineLocal")),
-    requiredCodes: formStrings(fd, "requiredCodes"),
-    optionalCodes: formStrings(fd, "optionalCodes"),
+    deadlineDate: formString(fd, "deadlineDate"),
+    deadlineTime: formString(fd, "deadlineTime"),
+    credentialTypeIds: formStrings(fd, "credentialTypeIds"),
+    intent: formString(fd, "intent") === "publish" ? "publish" : "draft",
   });
-  if (!parsed.success) fail(returnTo, jobErrorCode(parsed.error));
-
-  const siteLat = optionalCoord(parsed.data.siteLat);
-  const siteLng = optionalCoord(parsed.data.siteLng);
-  const approxLat = optionalCoord(parsed.data.approxLat);
-  const approxLng = optionalCoord(parsed.data.approxLng);
-  if ([siteLat, siteLng, approxLat, approxLng].includes("invalid")) fail(returnTo, "invalid_input");
-
-  const payMin = parsed.data.payMin ? dollarsToCents(parsed.data.payMin) : null;
-  const payMax = parsed.data.payMax ? dollarsToCents(parsed.data.payMax) : null;
-  if ((parsed.data.payMin && payMin == null) || (parsed.data.payMax && payMax == null)) fail(returnTo, "invalid_input");
+  if (!parsed.success) redirect(`${back}?error=invalid_input`);
+  const write = jobWriteFromForm(parsed.data);
+  if (!write) redirect(`${back}?error=invalid_input`);
 
   const supabase = await createClient();
-  const meta = await requestMeta();
-  const { data, error } = await supabase.rpc("save_job_draft", {
-    p_organization_id: organizationId,
-    p_job_id: jobId || null,
-    p_title: parsed.data.title,
-    p_description: parsed.data.description,
-    p_job_type: parsed.data.jobType,
-    p_category: parsed.data.category,
-    p_is_armed: parsed.data.armed === "yes",
-    p_urgency: parsed.data.urgency,
-    p_city: parsed.data.city || null,
-    p_county: parsed.data.county || null,
-    p_postal_code: parsed.data.postalCode || null,
-    p_site_address_private: parsed.data.siteAddress || null,
-    p_site_lat: siteLat,
-    p_site_lng: siteLng,
-    p_approx_lat: approxLat,
-    p_approx_lng: approxLng,
-    p_starts_local: parsed.data.startsLocal || null,
-    p_ends_local: parsed.data.endsLocal || null,
-    p_pay_type: parsed.data.payType,
-    p_pay_min_cents: payMin,
-    p_pay_max_cents: payMax,
-    p_workers_needed: parsed.data.workersNeeded,
-    p_min_years: parsed.data.minYears === "" ? null : parsed.data.minYears,
-    p_uniform_notes: parsed.data.uniformNotes || null,
-    p_vehicle_required: parsed.data.vehicleRequired,
-    p_equipment_notes: parsed.data.equipmentNotes || null,
-    p_deadline_local: parsed.data.deadlineLocal || null,
-    p_required_codes: parsed.data.requiredCodes,
-    p_optional_codes: parsed.data.optionalCodes,
-    p_user_agent: meta.user_agent,
-    p_request_id: meta.request_id,
-    p_ip: meta.ip_address,
+  const row = {
+    title: write.title,
+    description: write.description,
+    job_type: write.job_type,
+    category: write.category,
+    is_armed: write.is_armed,
+    urgency: write.urgency,
+    city: write.city,
+    county: write.county,
+    postal_code: write.postal_code,
+    starts_at: write.starts_at,
+    ends_at: write.ends_at,
+    recurrence_rule: write.recurrence_rule,
+    pay_type: write.pay_type,
+    pay_min_cents: write.pay_min_cents,
+    pay_max_cents: write.pay_max_cents,
+    workers_needed: write.workers_needed,
+    min_years_experience: write.min_years_experience,
+    uniform_notes: write.uniform_notes,
+    vehicle_required: write.vehicle_required,
+    equipment_notes: write.equipment_notes,
+    application_deadline: write.application_deadline,
+  };
+
+  let id = jobId;
+  if (id) {
+    const { data, error } = await supabase.from("jobs").update(row).eq("id", id).eq("organization_id", organizationId).select("id");
+    if (error || !data?.length) {
+      console.error("job.update_failed", error?.code);
+      redirect(`${back}?error=invalid_input`);
+    }
+  } else {
+    const { data, error } = await supabase
+      .from("jobs")
+      .insert({ ...row, organization_id: organizationId, created_by: ctx.userId, status: "draft" })
+      .select("id")
+      .single();
+    if (error || !data) {
+      console.error("job.create_failed", error?.code);
+      redirect(`${back}?error=invalid_input`);
+    }
+    id = data.id;
+  }
+
+  if (write.site_address) {
+    const { error } = await supabase.from("job_private_locations").upsert({ job_id: id, site_address: write.site_address });
+    if (error) {
+      console.error("job.address_failed", error.code);
+      redirect(`/employer/jobs/${id}?error=invalid_input`);
+    }
+  } else {
+    const { error } = await supabase.from("job_private_locations").delete().eq("job_id", id);
+    if (error) {
+      console.error("job.address_clear_failed", error.code);
+      redirect(`/employer/jobs/${id}?error=invalid_input`);
+    }
+  }
+
+  const { error: requirementError } = await supabase.rpc("set_job_requirements", {
+    p_job_id: id,
+    p_credential_type_ids: write.credential_type_ids,
   });
-  if (error || !data) fail(returnTo, marketplaceErrorCode(error?.message));
-  redirect(`/employer/jobs/${data}?notice=draft_saved`);
+  if (requirementError) {
+    console.error("job.requirements_failed", requirementError.code);
+    redirect(`/employer/jobs/${id}?error=invalid_input`);
+  }
+
+  if (write.intent === "publish") {
+    if (!jobReadyToPublish(write)) redirect(`/employer/jobs/${id}?error=job_incomplete`);
+    const meta = await requestMeta();
+    const { data: status, error } = await supabase.rpc("transition_job", {
+      p_job_id: id,
+      p_target: "published",
+      p_user_agent: meta.user_agent,
+      p_request_id: meta.request_id,
+      p_ip: meta.ip_address,
+    });
+    if (error) {
+      console.error("job.publish_failed", error.code);
+      redirect(`/employer/jobs/${id}?error=${employerErrorCode(error.message)}`);
+    }
+    redirect(`/employer/jobs/${id}?notice=${status === "pending_review" ? "job_pending" : "job_published"}`);
+  }
+  redirect(`/employer/jobs/${id}?notice=job_saved`);
 }
 
-export async function publishJob(fd: FormData) {
-  await requireArea("employer");
+export async function transitionJobStatus(fd: FormData) {
+  const ctx = await requireArea("employer");
   const jobId = formString(fd, "jobId");
-  const returnTo = safeNextPath(formString(fd, "returnTo"), jobId ? `/employer/jobs/${jobId}` : "/employer/jobs");
-  if (!jobId) fail(returnTo, "not_found");
+  const target = formString(fd, "target");
+  if (!(JOB_STATUSES as readonly string[]).includes(target)) redirect(`/employer/jobs/${jobId}?error=invalid_input`);
   const supabase = await createClient();
+  const { data: job } = await supabase.from("jobs").select("organization_id").eq("id", jobId).maybeSingle();
+  if (!job || !member(ctx, job.organization_id)) redirect("/forbidden");
   const meta = await requestMeta();
-  const { data, error } = await supabase.rpc("publish_job", {
+  const { data: status, error } = await supabase.rpc("transition_job", {
     p_job_id: jobId,
+    p_target: target as JobStatus,
     p_user_agent: meta.user_agent,
     p_request_id: meta.request_id,
     p_ip: meta.ip_address,
   });
-  if (error) fail(returnTo, marketplaceErrorCode(error.message));
-  const notice = data === "published" ? "published" : data === "pending_review" ? "pending_review" : "generic";
-  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}notice=${notice}`);
+  if (error) {
+    console.error("job.transition_failed", error.code);
+    redirect(`/employer/jobs/${jobId}?error=${employerErrorCode(error.message)}`);
+  }
+  const notice = status === "pending_review" && target === "published" ? "job_pending" : status === "published" ? "job_published" : "saved";
+  redirect(`/employer/jobs/${jobId}?notice=${notice}`);
 }
 
 const EMPLOYER_STATUSES = new Set(["reviewing", "shortlisted", "interview", "offered", "rejected"]);
@@ -132,7 +173,7 @@ export async function setApplicationStatus(fd: FormData) {
   const applicationId = formString(fd, "applicationId");
   const status = formString(fd, "status");
   const returnTo = safeNextPath(formString(fd, "returnTo"), "/employer/jobs");
-  if (!applicationId || !EMPLOYER_STATUSES.has(status)) fail(returnTo, "illegal_transition");
+  if (!applicationId || !EMPLOYER_STATUSES.has(status)) redirect(`${returnTo}?error=invalid_input`);
   const supabase = await createClient();
   const meta = await requestMeta();
   const { error } = await supabase.rpc("employer_set_application_status", {
@@ -142,6 +183,6 @@ export async function setApplicationStatus(fd: FormData) {
     p_request_id: meta.request_id,
     p_ip: meta.ip_address,
   });
-  if (error) fail(returnTo, marketplaceErrorCode(error.message));
+  if (error) redirect(`${returnTo}?error=${marketplaceErrorCode(error.message)}`);
   redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}notice=status_updated`);
 }

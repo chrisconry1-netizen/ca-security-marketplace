@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { PRODUCT_DOMAIN, PRODUCT_NAME } from "@/lib/brand";
 
 export default function Landing() {
   return (
     <main className="min-h-dvh bg-slate-950 text-white">
       <div className="mx-auto max-w-5xl px-4 py-6">
         <header className="flex items-center justify-between">
-          <span className="text-sm font-semibold tracking-wide text-slate-300">CA SECURITY WORKFORCE</span>
+          <span className="text-sm font-semibold tracking-wide text-slate-300">{PRODUCT_NAME}</span>
           <nav className="flex gap-3 text-sm">
             <Link href="/login" className="rounded-lg px-3 py-2 hover:bg-white/10">Sign in</Link>
             <Link href="/register" className="rounded-lg bg-white px-3 py-2 font-semibold text-slate-900">Get started</Link>
@@ -14,7 +15,7 @@ export default function Landing() {
         <section className="py-16 sm:py-24">
           <h1 className="text-4xl font-extrabold leading-tight sm:text-6xl">California&apos;s security shift marketplace.</h1>
           <p className="mt-4 max-w-2xl text-lg text-slate-300">
-            Verified credentials, real-time availability and fast matching for guards, armed and executive protection professionals, and the licensed companies that hire them.
+            {PRODUCT_NAME} is where guards and the organizations that hire them find each other. GuardGig does not employ or dispatch workers, set wages, or check a license with BSIS.
           </p>
           <p className="mt-6">
             <Link href="/jobs" className="text-sm font-semibold text-white underline underline-offset-4">
@@ -33,7 +34,7 @@ export default function Landing() {
           </div>
         </section>
         <footer className="border-t border-white/10 py-6 text-xs text-slate-400">
-          Pre-launch development build. Not affiliated with BSIS. Platform registration does not itself authorize any employment.
+          Pre-launch development build for {PRODUCT_DOMAIN}. Not affiliated with BSIS. Registration does not itself authorize any employment.
         </footer>
       </div>
     </main>

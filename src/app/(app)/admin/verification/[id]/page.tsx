@@ -8,6 +8,7 @@ import { PROFILE_MESSAGES } from "@/lib/workers/messages";
 import { relationName } from "@/lib/workers/present";
 import { VERIFICATION_METHODS } from "@/lib/workers/categories";
 import { createClient } from "@/lib/supabase/server";
+import { adminNav } from "@/lib/employer/nav";
 import { requireArea } from "@/server/auth/guards";
 import { signCredentialDocumentForReview } from "@/server/storage/signed-urls";
 import { reviewCredential } from "../actions";
@@ -35,7 +36,7 @@ export default async function ReviewCredentialPage({
   const timeState = credentialTimeState(row.status, row.expires_on);
 
   return (
-    <AppShell ctx={ctx} title="Admin" nav={[{ href: "/admin/verification", label: "Verification", ready: true }, { href: "/admin", label: "Home", ready: true }]}>
+    <AppShell ctx={ctx} title="Admin" nav={adminNav}>
       <Notice code={sp.notice} tone="info" messages={PROFILE_MESSAGES} />
       <Notice code={sp.error} messages={PROFILE_MESSAGES} />
       <p className="mt-2 text-sm">
