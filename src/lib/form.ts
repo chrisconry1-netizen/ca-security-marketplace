@@ -11,3 +11,8 @@ export function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
 }
+
+export function queryValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}

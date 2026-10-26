@@ -7,6 +7,7 @@ import { PROFILE_MESSAGES } from "@/lib/workers/messages";
 import { relationName } from "@/lib/workers/present";
 import { maskCredentialNumber } from "@/lib/workers/validation";
 import { createClient } from "@/lib/supabase/server";
+import { adminNav } from "@/lib/employer/nav";
 import { requireArea } from "@/server/auth/guards";
 
 export default async function VerificationQueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -25,7 +26,7 @@ export default async function VerificationQueuePage({ searchParams }: { searchPa
   const names = new Map((people ?? []).map((person) => [person.id, person.display_name]));
 
   return (
-    <AppShell ctx={ctx} title="Admin" nav={[{ href: "/admin", label: "Home", ready: true }, { href: "/admin/verification", label: "Verification", ready: true }, { href: "/admin/reports", label: "Reports" }]}>
+    <AppShell ctx={ctx} title="Admin" nav={adminNav}>
       <Notice code={sp.notice} tone="info" messages={PROFILE_MESSAGES} />
       <h1 className="mt-2 text-2xl font-bold text-slate-900">Credential review</h1>
       <p className="mt-1 text-sm text-slate-600">Pending credentials only. A person records the decision. This queue does not query BSIS or any other registry, and it does not verify anything on its own.</p>

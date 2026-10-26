@@ -15,6 +15,14 @@ async function signAsUser(bucket: "avatars" | "credential-documents", path: stri
   return data.signedUrl;
 }
 
+export async function signOrgLogo(path: string | null | undefined, organizationId: string): Promise<string | null> {
+  if (!path?.startsWith(`${organizationId}/`)) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("org-logos").createSignedUrl(path, AVATAR_TTL_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 export async function signOwnAvatar(path: string | null | undefined, ownerId: string): Promise<string | null> {
   if (!path?.startsWith(`${ownerId}/`)) return null;
   return signAsUser("avatars", path, AVATAR_TTL_SECONDS);

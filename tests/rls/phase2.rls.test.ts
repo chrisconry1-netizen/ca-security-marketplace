@@ -97,7 +97,7 @@ describe("worker profile isolation", () => {
     expect(rows[0].headline).not.toBe("pwned");
   });
 
-  it("an employer cannot read a profile that is not searchable, and there is still no street to leak", async () => {
+  it("an employer cannot read a worker profile row, searchable or not", async () => {
     expect((await employer.client.from("worker_profiles").select("user_id").eq("user_id", wA.id)).data).toEqual([]);
     await pool.query(
       `insert into public.organizations (name, org_type, created_by)
@@ -111,11 +111,21 @@ describe("worker profile isolation", () => {
        on conflict do nothing`,
       [employer.id],
     );
-    await pool.query("update public.worker_profiles set is_searchable=true, city='Oakland', postal_code='94612' where user_id=$1", [wA.id]);
-    const { data } = await employer.client.from("worker_profiles").select("city, postal_code, bio").eq("user_id", wA.id);
-    expect(data?.[0]?.city).toBe("Oakland");
-    expect(data?.[0]).not.toHaveProperty("street");
+    await pool.query(
+      "update public.worker_profiles set is_searchable=true, city='Oakland', county='Alameda', postal_code='94612', bio='private bio', headline='Night posts' where user_id=$1",
+      [wA.id],
+    );
+    expect((await employer.client.from("worker_profiles").select("city, postal_code, bio, headline").eq("user_id", wA.id)).data ?? []).toEqual([]);
+    const card = await employer.client.from("worker_search_cards").select("city, headline").eq("user_id", wA.id).single();
+    expect(card.data).toEqual({ city: "Oakland", headline: "Night posts" });
+    const hidden = await pool.query(
+      `select column_name from information_schema.columns
+       where table_schema='public' and table_name='worker_search_cards'
+         and column_name in ('bio','postal_code','security_experience','le_experience_summary','approx_lat','approx_lng')`,
+    );
+    expect(hidden.rows).toEqual([]);
     await pool.query("update public.worker_profiles set is_searchable=false where user_id=$1", [wA.id]);
+    expect((await employer.client.from("worker_search_cards").select("user_id").eq("user_id", wA.id)).data ?? []).toEqual([]);
   });
 
   it("a worker cannot read or write another worker's availability", async () => {

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { AppShell, PlaceholderCard } from "@/components/app-shell";
+import { adminNav } from "@/lib/employer/nav";
 import { requireArea } from "@/server/auth/guards";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
@@ -11,10 +13,19 @@ export default async function AdminDashboard() {
     ? await (await createClient()).from("audit_logs").select("id, occurred_at, actor_type, action, entity_type").order("occurred_at", { ascending: false }).limit(20)
     : { data: null };
   return (
-    <AppShell ctx={ctx} title="Admin" nav={[{ href: "/admin/verification", label: "Verification", ready: true }, { href: "/admin/reports", label: "Reports" }, { href: "/admin/users", label: "Users" }, { href: "/admin/audit", label: "Audit" }]}>
+    <AppShell ctx={ctx} title="Admin" nav={adminNav}>
       <h1 className="mt-2 text-2xl font-bold text-slate-900">Trust &amp; operations</h1>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <PlaceholderCard title="Credential review" body="Pending worker credentials are in the verification queue. Decisions are human. Nothing is verified automatically." />
+        <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="font-semibold text-slate-900">Credential review</h2>
+          <p className="mt-1 text-sm text-slate-600">Pending worker credentials are in the verification queue. Decisions are human. Nothing is verified automatically.</p>
+          <Link href="/admin/verification" className="mt-3 inline-block text-sm font-semibold text-slate-900 underline">Open credential queue</Link>
+        </section>
+        <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="font-semibold text-slate-900">Organization review</h2>
+          <p className="mt-1 text-sm text-slate-600">Pending organizations wait for a person to record a decision. The license number is not checked with BSIS, and approval does not publish jobs.</p>
+          <Link href="/admin/organizations" className="mt-3 inline-block text-sm font-semibold text-slate-900 underline">Open organization queue</Link>
+        </section>
         <PlaceholderCard title="Reports & moderation" body="The rest of the admin center arrives in a later phase." />
       </div>
       <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4">

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { PRODUCT_NAME } from "@/lib/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CA Security Workforce Marketplace",
-  description: "California security shift and workforce marketplace",
+  title: PRODUCT_NAME,
+  description: "California security shift marketplace. GuardGig does not employ workers, set wages, or check BSIS.",
 };
 
 export default function RootLayout({
